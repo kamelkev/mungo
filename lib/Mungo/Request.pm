@@ -7,6 +7,7 @@ package Mungo::Request;
 use strict;
 use Mungo::Cookie;
 use Mungo::MultipartFormData;
+use Encode qw (decode_utf8);
 eval "use APR::Table;";
 our $AUTOLOAD;
 
@@ -184,8 +185,12 @@ sub QueryString {
       my ($k, $v) = split(/=/, $kv_pair, 2);
 
       # $v = uri_unescape($v); # If CPAN dep on URI::Escape were allowed
-      $v =~ s/\+/ /g;
+      $k =~ s/%([0-9a-f]{2})/chr(hex($1))/ige;
       $v =~ s/%([0-9a-f]{2})/chr(hex($1))/ige;
+      $v =~ s/\+/ /g;
+
+      $k = decode_utf8($k);
+      $v = decode_utf8($v);
 
       if (exists($params{$k}) && ref($params{$k})) {
           push @{$params{$k}}, $v;
@@ -207,11 +212,17 @@ sub decode_form {
   my $form_content = $_[1];
   my $form = {};
   return $form unless($form_content);
-  foreach my $kv (split /[&;]/, $form_content) {
-    my($k, $v) = map { s/\+/ /g;
-                       s/%([0-9a-f]{2})/chr(hex($1))/ige;
-                       $_;
-                     } split(/=/, $kv, 2);
+
+  foreach my $kv_pair (split /[&;]/, $form_content) {
+    my ($k, $v) = split(/=/, $kv_pair, 2);
+
+    $k =~ s/%([0-9a-f]{2})/chr(hex($1))/ige;
+    $v =~ s/%([0-9a-f]{2})/chr(hex($1))/ige;
+    $v =~ s/\+/ /g;
+
+    $k = decode_utf8($k);
+    $v = decode_utf8($v);
+
     if(ref $form->{$k}) {
       push @{$form->{$k}}, $v;
     }

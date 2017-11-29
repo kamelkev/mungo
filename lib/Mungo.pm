@@ -249,7 +249,7 @@ You can add a PerlRequire directive to httpd.conf, or 'use' your preamble class 
 #=============================================================================#
 
 use strict;
-use IO::File;
+use Encode qw /encode_utf8/;
 eval "
   use Apache2::Const qw ( OK NOT_FOUND DECLINED SERVER_ERROR);
   use Apache2::RequestRec;
@@ -525,13 +525,13 @@ sub include_file {
   unless(UNIVERSAL::can($pkg, 'content') &&
          $inode == eval "\$${pkg}::Mungo_inode" &&
          $mtime == eval "\$${pkg}::Mungo_mtime") {
-    my $contents;
-    my $ifile = IO::File->new("<$filename");
-    die "$!: $filename" unless $ifile;
-    {
-      local $/ = undef;
-      $contents = <$ifile>;
-    }
+    open(my $fh, "<:encoding(UTF-8)", $filename)
+        or die "$!: $filename";
+    my $contents = do {
+        local($/);
+        <$fh>
+    };
+    close $fh;
     return unless $self->packagize($pkg, \$contents, $filename);
     # The packagize was successful, make content do __content
     eval "*${pkg}::content = \\&${pkg}::__content";
@@ -579,7 +579,7 @@ sub packagize {
   eval "\$${pkg}::Mungo_postamble = \$postamble;";
   eval "\$${pkg}::Mungo_contents = \$contents;";
 
-  open my $fh, ">/tmp/wibble";
+  open(my $fh, ">:encoding(UTF-8)", ">/tmp/wibble");
   print $fh "$preamble$expr$postamble";
   close $fh;
 

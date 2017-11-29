@@ -101,7 +101,8 @@ use Mungo::Response::Trap;
 use Mungo::Cookie;
 use Mungo::Utils;
 use HTML::Entities;
-use Apache2::Const qw ( OK NOT_FOUND DECLINED SERVER_ERROR);
+use Encode qw ( encode_utf8 );
+use Apache2::Const qw ( OK NOT_FOUND DECLINED SERVER_ERROR );
 
 our $AUTOLOAD;
 
@@ -473,10 +474,11 @@ sub Flush {
     $self->send_http_header;
     $_r->{data}->{'__OUTPUT_STARTED__'} = 1;
   }
+  my $encoded = encode_utf8($one_true_buffer);
   if (@{$_r->{data}->{'IO_stack'} || []}) {
-      $_r->{data}->{'IO_stack'}->[-1]->print($one_true_buffer);
+      $_r->{data}->{'IO_stack'}->[-1]->print($encoded);
   } else {
-      print $one_true_buffer;
+      print $encoded;
   }
 
   $one_true_buffer = '';
@@ -511,6 +513,7 @@ sub PRINT {
       $self->send_http_header;
     }
   }
+  $output = encode_utf8($output);
   if (@{$_r->{data}->{'IO_stack'} || []}) {
       $_r->{data}->{'IO_stack'}->[-1]->print($output);
   } else {
